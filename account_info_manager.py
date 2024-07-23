@@ -1,4 +1,5 @@
-from typing import Union, Dict, Sequence
+from typing import Union, Dict, Sequence, List
+import time
 
 from solana.rpc.async_api import AsyncClient
 from solders.pubkey import Pubkey
@@ -7,10 +8,14 @@ from solders.rpc.responses import GetAccountInfoMaybeJsonParsedResp
 from construct import Bytes, Int16ul, Int64ul
 from construct import Struct
 
+import logger
 from consts import TOKEN_2022_PROGRAM_ID
 from data_types.fee_config import FeeConfig, TransferFee
+from errors import SolanaTransactionFetchError
 
 PubkeyOrStr = Union[Pubkey, str]
+DEFAULT_MAX_RETRIES = 5  # maximum number of times to retry get_confirmed_transaction call
+DELAY_SECONDS = 0.2  # number of seconds to wait between calls to get_confirmed_transaction
 
 PUBLIC_KEY_LAYOUT = Bytes(32)
 TRANSFER_FEE_LAYOUT = Struct(
@@ -36,21 +41,56 @@ class AccountInfoManager:
         self.client = AsyncClient(endpoint)
         self.account_info_cache_manager = self.AccountInfoCacheManager()
         self.fee_config_cache_manager = self.FeeConfigCacheManager()
+        self.endpoint = endpoint
+        self.logger = logger.get_logger(__name__, filename=f"{__name__}.log")
 
-    async def get_account_info_json_parsed(self, address: PubkeyOrStr):
-        if isinstance(address, str):
-            address = Pubkey.from_string(address)
+    async def get_account_info_json_parsed(
+            self,
+            accounts: Union[Pubkey, Sequence[Pubkey]],
+            retries=DEFAULT_MAX_RETRIES
+    ):
+        acc_info_resps: Dict[str, Union[GetAccountInfoMaybeJsonParsedResp, None]] = {}
+        if isinstance(accounts, PubkeyOrStr):
+            accounts = [accounts]
+        for index, account in enumerate(accounts):
+            if isinstance(account, Pubkey):
+                accounts[index] = str(account)
 
-        if self.account_info_cache_manager.contains(address):
-            return self.account_info_cache_manager.read(address)
+        for account in accounts:
+            num_retries = retries
+            while num_retries > 0:
+                try:
+                    if self.account_info_cache_manager.contains(account):
+                        acc_info_resp = self.account_info_cache_manager.read(account)
+                        acc_info_resps[account] = acc_info_resp
+                        break
 
-        try:
-            acc_info_resp = await self.client.get_account_info_json_parsed(address)
-            if acc_info_resp.value is not None:
-                self.account_info_cache_manager.write(address, acc_info_resp)
-                return acc_info_resp
-        except Exception as e:
-            return None
+                    acc_info_resp = await self.client.get_account_info_json_parsed(account)
+                    if acc_info_resp.value is not None:
+                        self.account_info_cache_manager.write(account, acc_info_resp)
+                        acc_info_resps[account] = acc_info_resp
+                        break
+                except KeyError as e:
+                    self.logger.debug(e)
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to receive account info response from endpoint {self.endpoint}, account {account}, {e}",
+                        exc_info=True,
+                    )
+                num_retries -= 1
+                time.sleep(DELAY_SECONDS)
+                self.logger.debug(
+                    f"Retrying get_account_info fetch: {account} with endpoint {self.endpoint}"
+                )
+
+            if num_retries == 0:
+                self.logger.error(
+                    f"Error fetching get_account_info by account {account} from endpoint {self.endpoint}",
+                    exc_info=True,
+                )
+                acc_info_resps[account] = None
+
+        return acc_info_resps
 
     class AccountInfoCacheManager:
         def __init__(self):

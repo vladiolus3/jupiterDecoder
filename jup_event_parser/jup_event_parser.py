@@ -33,7 +33,20 @@ class JupEventParser(Coder):
                                    route_info: RouteInfo):
         account_infos_map = []
         parsed_events = await self.get_parsed_events(transaction_with_meta, route_info)
-        pass
+
+        swap_events = [event for event in parsed_events if event.name == 'ParsedSwapEvent']
+        fee_events = [event for event in parsed_events if event.name == 'ParsedFeeEvent']
+        if len(swap_events) == 0:
+            # Not a swap event, for example:
+            # https://solscan.io/tx/5ZSozCHmAFmANaqyjRj614zxQY8HDXKyfAs2aAVjZaadS4DbDwVq8cTbxmM5m5VzDcfhysTSqZgKGV1j2A2Hqz1V
+            return
+
+        accounts_to_be_fetched = []
+        [accounts_to_be_fetched.append(event.data.input_mint) for event in swap_events]
+        [accounts_to_be_fetched.append(event.data.output_mint) for event in swap_events]
+
+        if len(fee_events) > 0:
+            accounts_to_be_fetched.append(fee_events[0].data.account)
 
     async def get_parsed_events(self,
                                 transaction_with_meta: EncodedTransactionWithStatusMeta,
@@ -92,11 +105,11 @@ class JupEventParser(Coder):
             else:
                 account = transfer_instruction.parsed['info']['source']
 
-            account_info = await self.account_info_manager.get_account_info_json_parsed(account)
-            if account_info is None:
+            account_infos = await self.account_info_manager.get_account_info_json_parsed(account)
+            if account_infos[account] is None:
                 mint = transfer_instruction.parsed['info']['mint']
             else:
-                mint = account_info.value.data.parsed['info']['mint']
+                mint = account_infos[account].value.data.parsed['info']['mint']
         else:
             mint = transfer_instruction.parsed['info']['mint']
 
@@ -130,8 +143,8 @@ class JupEventParser(Coder):
             if _is_fee_instruction(inner_instruction, str(fee_account),
                                    destination, route_info.stack_height):
                 if inner_instruction.parsed['type'] == 'transfer':
-                    account_info = await self.account_info_manager.get_account_info_json_parsed(destination)
-                    mint = account_info.value.data.parsed['info']['mint']
+                    account_infos = await self.account_info_manager.get_account_info_json_parsed(destination)
+                    mint = account_infos[destination].value.data.parsed['info']['mint']
                 else:
                     mint = inner_instruction.parsed['info']['mint']
 
