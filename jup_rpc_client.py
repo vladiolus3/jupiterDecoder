@@ -60,7 +60,7 @@ class JupRpcClient:
         route_info_list = self.jup_event_parser.get_route_info_list(tx)
         swaps = []
         for route_info in route_info_list:
-            swap = self.jup_event_parser.extract_single_route(tx, route_info)
+            swap = await self.jup_event_parser.extract_single_route(tx, route_info)
 
 
 

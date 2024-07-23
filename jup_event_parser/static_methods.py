@@ -13,6 +13,17 @@ def _is_swap_instruction(instruction: InnerInstruction, route_ix_stack_height: i
             and instruction.stack_height == route_ix_stack_height + 1)
 
 
+def _is_fee_instruction(inner_instruction: InnerInstruction,
+                        fee_account: str,
+                        destination: str,
+                        route_ix_stack_height: int):
+    ix_type = inner_instruction.parsed['type']
+    stack_height = inner_instruction.stack_height
+    return ((ix_type == 'transfer' or ix_type == 'transferChecked') and
+            stack_height == route_ix_stack_height + 1 and
+            fee_account == destination)
+
+
 def _get_in_and_out_transfer_instructions(inner_instructions: Sequence[InnerInstruction],
                                           swap: Swap):
     def _is_transfer_instruction(_instruction: InnerInstruction, _swap_ix_stack_height: int):

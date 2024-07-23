@@ -2,7 +2,7 @@ from typing import Union, Dict, Sequence
 
 from solana.rpc.async_api import AsyncClient
 from solders.pubkey import Pubkey
-from solders.rpc.responses import GetAccountInfoResp
+from solders.rpc.responses import GetAccountInfoMaybeJsonParsedResp
 
 from construct import Bytes, Int16ul, Int64ul
 from construct import Struct
@@ -37,7 +37,7 @@ class AccountInfoManager:
         self.account_info_cache_manager = self.AccountInfoCacheManager()
         self.fee_config_cache_manager = self.FeeConfigCacheManager()
 
-    async def get_account_info(self, address: PubkeyOrStr, encoding: str = 'jsonParsed'):
+    async def get_account_info_json_parsed(self, address: PubkeyOrStr):
         if isinstance(address, str):
             address = Pubkey.from_string(address)
 
@@ -45,18 +45,18 @@ class AccountInfoManager:
             return self.account_info_cache_manager.read(address)
 
         try:
-            acc_info_resp = await self.client.get_account_info(address, encoding=encoding)
+            acc_info_resp = await self.client.get_account_info_json_parsed(address)
             if acc_info_resp.value is not None:
                 self.account_info_cache_manager.write(address, acc_info_resp)
                 return acc_info_resp
-        except Exception:
+        except Exception as e:
             return None
 
     class AccountInfoCacheManager:
         def __init__(self):
-            self.cache_dict: Dict[PubkeyOrStr, GetAccountInfoResp] = {}
+            self.cache_dict: Dict[PubkeyOrStr, GetAccountInfoMaybeJsonParsedResp] = {}
 
-        def write(self, key: PubkeyOrStr, value: GetAccountInfoResp):
+        def write(self, key: PubkeyOrStr, value: GetAccountInfoMaybeJsonParsedResp):
             if key in self.cache_dict:
                 raise KeyError(f"Try to write duplicate key {key} to AccountInfoCacheManager")
             self.cache_dict[key] = value
@@ -64,7 +64,7 @@ class AccountInfoManager:
         def contains(self, key: PubkeyOrStr) -> bool:
             return key in self.cache_dict.keys()
 
-        def read(self, key: PubkeyOrStr) -> GetAccountInfoResp:
+        def read(self, key: PubkeyOrStr) -> GetAccountInfoMaybeJsonParsedResp:
             try:
                 return self.cache_dict[key]
             except KeyError:
@@ -87,11 +87,11 @@ class AccountInfoManager:
             return len(self.cache_dict)
 
     async def get_fee_config(self, address: PubkeyOrStr):
-        # TODO: testcase 2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo
-        # tx id 2nRKszNNFYHjKevkBs9zT7gctuCS7iFVQXPfuRKX5cfCeYAQwFsZP4N6GbkXvAJSnXjMk1aNhFyYtrtDimkhJBAD
-
         if self.fee_config_cache_manager.contains(address):
             return self.fee_config_cache_manager.read(address)
+
+        if isinstance(address, str):
+            address = Pubkey.from_string(address)
 
         def _extract_extension_data(_bytes_data: list[int]):
             # copy from "@solana/spl-token" ts package
@@ -115,11 +115,18 @@ class AccountInfoManager:
 
             return None
 
-        account_info = await self.get_account_info(address, 'base64')
-        value = account_info.value
-        if value is None or value.owner != TOKEN_2022_PROGRAM_ID:
+        account_info = None
+        try:
+            account_info = await self.client.get_account_info(address)
+        except Exception as e:
+            print(e)
+            pass
+
+        if account_info is None or account_info.value is None or account_info.value.owner != TOKEN_2022_PROGRAM_ID:
             self.fee_config_cache_manager.write(address, None)
             return None
+
+        value = account_info.value
 
         tvl_data = _extract_extension_data(list(value.data))
 

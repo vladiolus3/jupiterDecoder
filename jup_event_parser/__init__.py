@@ -2,6 +2,7 @@ from typing import Union, Sequence
 
 from solders.transaction_status import ParsedInstruction, UiPartiallyDecodedInstruction, UiCompiledInstruction
 from solders.transaction_status import EncodedTransactionWithStatusMeta
+from solders.pubkey import Pubkey
 
 import base58
 
@@ -16,5 +17,6 @@ from consts import (JUPITER_V6_PROGRAM_ID, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_
 from data_types.route_info import RouteInfo
 from data_types.transfer_instructions import TransferInstructions
 from data_types.swap import Swap
+from data_types.parsed_event import ParsedEvent
 
 InnerInstruction = Union[ParsedInstruction, UiPartiallyDecodedInstruction, UiCompiledInstruction]

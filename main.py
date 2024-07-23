@@ -18,9 +18,8 @@ async def lookup_tx(tx_resp: GetTransactionResp):
 if __name__ == '__main__':
     async def aaa():
         account_info_manager = AccountInfoManager('https://mainnet.helius-rpc.com/?api-key=8d81201e-5fa8-409c-bbf7-0f5bf70afbb7')
-        fee_config = await account_info_manager.get_fee_config('2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo')
         client = JupRpcClient('https://mainnet.helius-rpc.com/?api-key=8d81201e-5fa8-409c-bbf7-0f5bf70afbb7')
-        tx = await client.decode_transaction('5zFrPZ7Hs8uLPEJFuHm16JDEyZuKgB3CSzrU1X3pTpXigfj1Kywht7Yhbqm15HqT9ZEtJn9zGooHGwLyCNCkTUbb')
+        tx = await client.decode_transaction('3b6xEqa7cZv8Gbo1VjaKKuLbbXDD4g9x1m5yzGgRfSb2ozktqCrY9BtoqkSiBgnu1uwMsjBWcqqHTE2eQDy9DtTR')
 
         pass
 
