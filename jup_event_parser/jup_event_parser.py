@@ -1,5 +1,5 @@
 from .__init__ import *
-from .static_methods import _get_inner_instructions, _get_swaps
+from .static_methods import _get_inner_instructions, _get_swaps, _get_in_and_out_transfer_instructions
 
 
 class JupEventParser(Coder):
@@ -36,6 +36,22 @@ class JupEventParser(Coder):
         inner_instructions = _get_inner_instructions(transaction_with_meta, route_info)
         swaps = _get_swaps(inner_instructions, route_info)
         for swap in swaps:
-            pass
+            transfer_instructions = _get_in_and_out_transfer_instructions(inner_instructions, swap)
 
+    def get_transfer_data(self, transfer_instructions: Sequence[InnerInstruction], transfer_type: str):
+        mint = ''
+        amount = 0
+        for instruction in transfer_instructions:
+            if (instruction.parsed['type'] == 'transferChecked' or
+                    instruction.parsed['type'] == 'transferCheckedWithFee'):
+                if transfer_type == 'out':
+                    pass
+
+    def get_exact_out_amount_after_fee(self, info: dict, transfer_instruction_type: str, _type: str):
+        # https://solscan.io/tx/2nRKszNNFYHjKevkBs9zT7gctuCS7iFVQXPfuRKX5cfCeYAQwFsZP4N6GbkXvAJSnXjMk1aNhFyYtrtDimkhJBAD
+        if transfer_instruction_type == 'transferChecked':
+            try:
+                pass
+            except:
+                pass
 

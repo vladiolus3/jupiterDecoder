@@ -13,6 +13,47 @@ def _is_swap_instruction(instruction: InnerInstruction, route_ix_stack_height: i
             and instruction.stack_height == route_ix_stack_height + 1)
 
 
+def _get_in_and_out_transfer_instructions(inner_instructions: Sequence[InnerInstruction],
+                                          swap: Swap):
+    def _is_transfer_instruction(_instruction: InnerInstruction, _swap_ix_stack_height: int):
+        if (_instruction.program_id == TOKEN_PROGRAM_ID or
+                _instruction.program_id == TOKEN_2022_PROGRAM_ID):
+            _ix_type = _instruction.parsed['type']
+            _ix_stack_height = _instruction.stack_height
+            if _ix_type in TRANSFER_INSTRUCTION_TYPES and _ix_stack_height >= _swap_ix_stack_height + 1:
+                return _ix_type
+        return None
+
+    transfer_instructions = TransferInstructions()
+    in_account = str(swap.in_account)
+    out_account = str(swap.out_account)
+
+    index = swap.instruction_index + 1
+
+    while index < swap.next_swap_index:
+        inner_instruction = inner_instructions[index]
+        ix_type = _is_transfer_instruction(inner_instruction, swap.stack_height)
+        if ix_type is not None:
+            source = inner_instruction.parsed['info']['source']
+            destination = inner_instruction.parsed['info']['destination']
+
+            if ix_type == 'transfer' or ix_type == 'transferChecked':
+                if in_account == source:
+                    transfer_instructions.in_transfers.append(inner_instruction)
+                if out_account == destination:
+                    transfer_instructions.out_transfers.append(inner_instruction)
+
+            elif ix_type == 'burn' and in_account == inner_instruction.parsed['info']['account']:
+                transfer_instructions.in_transfers.append(inner_instruction)
+
+            elif ix_type == 'mintTo' and out_account == inner_instruction.parsed['info']['account']:
+                transfer_instructions.out_transfers.append(inner_instruction)
+
+        index = index + 1
+
+    return transfer_instructions
+
+
 def _get_swaps(inner_instructions: Sequence[InnerInstruction],
                route_info: RouteInfo):
     swaps = []
@@ -71,17 +112,17 @@ def _get_swap(inner_instructions: Sequence[InnerInstruction],
               swap_data: any,
               route_ix_stack_height: int):
     # TODO: check this
-    def _get_swap_direction(amm: str, _swap_data: any) -> bool:
-        if amm in SWAP_DIRECTION_ARGS['SIDE']:
+    def _get_swap_direction(_amm: str, _swap_data: any) -> bool:
+        if _amm in SWAP_DIRECTION_ARGS['SIDE']:
             return _swap_data.side.__cls__.__name__ == "Ask"
 
-        if amm in SWAP_DIRECTION_ARGS['A_TO_B']:
+        if _amm in SWAP_DIRECTION_ARGS['A_TO_B']:
             return _swap_data.a_to_b
 
-        if amm in SWAP_DIRECTION_ARGS['X_TO_Y']:
+        if _amm in SWAP_DIRECTION_ARGS['X_TO_Y']:
             return _swap_data.x_to_y
 
-        if amm in SWAP_DIRECTION_ARGS['QUANTITY_IS_COLLATERAL']:
+        if _amm in SWAP_DIRECTION_ARGS['QUANTITY_IS_COLLATERAL']:
             return _swap_data.quantity_is_collateral
 
         return True
@@ -108,3 +149,9 @@ def _get_swap(inner_instructions: Sequence[InnerInstruction],
     swap.stack_height = swap_instruction.stack_height
     swap.next_swap_index = index
     return swap
+
+
+
+
+
+

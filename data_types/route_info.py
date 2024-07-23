@@ -6,7 +6,7 @@ class RouteInfo:
                  index: int,
                  stack_height: int,
                  name: str,
-                 accounts: List[Pubkey],
+                 accounts: Sequence[Pubkey],
                  data: Container):
         self.index = index
         self.stack_height = stack_height

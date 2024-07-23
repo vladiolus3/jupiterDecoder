@@ -1,6 +1,8 @@
 from solders.pubkey import Pubkey
 
 JUPITER_V6_PROGRAM_ID = Pubkey.from_string('JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4')
+TOKEN_PROGRAM_ID = Pubkey.from_string('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
+TOKEN_2022_PROGRAM_ID = Pubkey.from_string('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb')
 
 TRANSFER_INSTRUCTION_TYPES = {
     'transfer',
