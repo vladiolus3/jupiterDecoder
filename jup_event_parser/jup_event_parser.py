@@ -1,5 +1,7 @@
 from account_info_manager import AccountInfoManager
 from consts import PLATFORM_FEE_ACCOUNTS_POSITION
+from data_types.parsed_fee_event import ParsedFeeEvent
+from data_types.parsed_swap_event import ParsedSwapEvent
 from .__init__ import *
 from .static_methods import _get_inner_instructions, _get_swaps, _get_in_and_out_transfer_instructions, \
     _is_fee_instruction
@@ -44,7 +46,8 @@ class JupEventParser(Coder):
             in_transfer_data = await self.get_transfer_data(transfer_instructions.in_transfers, 'in')
             out_transfer_data = await self.get_transfer_data(transfer_instructions.out_transfers, 'out')
             swap_event = ParsedEvent()
-            swap.name = 'ParsedSwapEvent'
+            swap_event.name = 'ParsedSwapEvent'
+            swap_event.data = ParsedSwapEvent()
             swap_event.data.amm = inner_instructions[swap.instruction_index].program_id
             swap_event.data.input_mint = in_transfer_data['mint']
             swap_event.data.input_amount = in_transfer_data['amount']
@@ -59,6 +62,7 @@ class JupEventParser(Coder):
 
             fee_event = ParsedEvent()
             fee_event.name = 'ParsedFeeEvent'
+            fee_event.data = ParsedFeeEvent()
             fee_event.data.account = Pubkey.from_string(swap_fee['account'])
             fee_event.data.mint = Pubkey.from_string(swap_fee['mint'])
             fee_event.data.amount = swap_fee['amount']
@@ -105,21 +109,21 @@ class JupEventParser(Coder):
         if _type == 'transferChecked':
             fee_config = await self.account_info_manager.get_fee_config(info['mint'])
             if fee_config is None:
-                return info['tokenAmount']['amount']
+                return int(info['tokenAmount']['amount'])
 
             fee_basis_points = fee_config.newer_transfer_fee.transfer_fee_basis_points
-            amount = info['tokenAmount']['amount']
+            amount = int(info['tokenAmount']['amount'])
             fee = amount * fee_basis_points / 10_000
             return amount - fee
 
-        return info['tokenAmount']['amount'] - info['feeAmount']['amount']
+        return int(info['tokenAmount']['amount']) - int(info['feeAmount']['amount'])
 
     async def get_swap_fee(self, route_info: RouteInfo, inner_instructions: Sequence[InnerInstruction]):
         position = PLATFORM_FEE_ACCOUNTS_POSITION[route_info.name]
         fee_account = route_info.accounts[position]  # base58 ???
 
         for inner_instruction in inner_instructions:
-            if inner_instruction.parsed is None:
+            if not hasattr(inner_instruction, 'parsed') or inner_instruction.parsed is None:
                 continue
 
             destination = inner_instruction.parsed['info']['destination']
