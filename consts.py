@@ -92,7 +92,7 @@ SWAP_IN_OUT_ACCOUNTS_POSITION = {
     'Raydium': {'in': 14, 'out': 15},
     'RaydiumClmm': {'in': 3, 'out': 4},
     'RaydiumClmmV2': {'in': 3, 'out': 4},
-    'RaydiumCp': {'in': 4, 'out': 5},
+    'RaydiumCP': {'in': 4, 'out': 5},
     'Saber': {'in': 3, 'out': 6},
     'SaberAddDecimalsDeposit': {'in': 4, 'out': 5},
     'SaberAddDecimalsWithdraw': {'in': 5, 'out': 4},
