@@ -73,7 +73,9 @@ class JupEventParser(Coder):
             if (instruction.parsed['type'] == 'transferChecked' or
                     instruction.parsed['type'] == 'transferCheckedWithFee'):
                 if transfer_type == 'out':
-                    amount = amount + await self.get_exact_out_amount_after_fee(instruction.parsed['info'])
+                    amount = (amount + await self.get_exact_out_amount_after_fee(
+                        instruction.parsed['info'],
+                        instruction.parsed['type']))
                 else:
                     amount = amount + int(instruction.parsed['info']['tokenAmount']['amount'])
             else:
@@ -96,11 +98,11 @@ class JupEventParser(Coder):
 
         return {'mint': mint, 'amount': amount}
 
-    async def get_exact_out_amount_after_fee(self, info: dict):
+    async def get_exact_out_amount_after_fee(self, info: dict, _type: str):
         # testcase 2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo
         # tx_id 2nRKszNNFYHjKevkBs9zT7gctuCS7iFVQXPfuRKX5cfCeYAQwFsZP4N6GbkXvAJSnXjMk1aNhFyYtrtDimkhJBAD
 
-        if info['type'] == 'transferChecked':
+        if _type == 'transferChecked':
             fee_config = await self.account_info_manager.get_fee_config(info['mint'])
             if fee_config is None:
                 return info['tokenAmount']['amount']
