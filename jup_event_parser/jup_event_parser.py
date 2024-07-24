@@ -57,6 +57,8 @@ class JupEventParser(Coder):
 
         swap_data = await self.parse_swap_events(account_infos_dict, swap_events)
         initial_positions, final_positions = get_initial_and_final_swap_positions(route_info)
+        if len(final_positions) == 0:
+            return
 
         in_symbol = swap_data[initial_positions[0]]['inSymbol']
         in_mint = swap_data[initial_positions[0]]['inMint']
@@ -70,7 +72,8 @@ class JupEventParser(Coder):
         for data in in_swap_data:
             in_amount += data['inAmount']
             in_amount_in_decimal += Decimal(data['inAmountInDecimal']) if 'inAmountInDecimal' in data else Decimal(0)
-            in_amount_in_usd += Decimal(data['inAmountInUSD']) if 'inAmountInUSD' in data else Decimal(0)
+            in_amount_in_usd += Decimal(data['inAmountInUSD']) if ('inAmountInUSD' in data and
+                                                                   data['inAmountInUSD'] is not None) else Decimal(0)
 
         out_symbol = swap_data[final_positions[0]]['outSymbol']
         out_mint = swap_data[final_positions[0]]['outMint']
@@ -84,7 +87,8 @@ class JupEventParser(Coder):
         for data in out_swap_data:
             out_amount += data['outAmount']
             out_amount_in_decimal += Decimal(data['outAmountInDecimal']) if 'outAmountInDecimal' in data else Decimal(0)
-            out_amount_in_usd += Decimal(data['outAmountInUSD']) if 'outAmountInUSD' in data else Decimal(0)
+            out_amount_in_usd += Decimal(data['outAmountInUSD']) if ('outAmountInUSD' in data and
+                                                                     data['outAmountInUSD'] is not None) else Decimal(0)
 
         volume_in_usd = min(out_amount_in_usd, out_amount_in_usd) \
             if out_amount_in_usd and out_amount_in_usd else out_amount_in_usd or out_amount_in_usd
@@ -131,7 +135,7 @@ class JupEventParser(Coder):
             swap.fee_symbol = volume['symbol']
             swap.fee_amount = Decimal(volume['amount'])
             swap.fee_amount_in_decimal = Decimal(volume['amountInDecimal'])
-            swap.fee_amount_in_usd = Decimal(volume['amountInUSD'])
+            swap.fee_amount_in_usd = Decimal(volume['amountInUSD']) if volume['amountInUSD'] is not None else Decimal(0)
             swap.fee_mint = str(volume['mint'])
 
         return swap

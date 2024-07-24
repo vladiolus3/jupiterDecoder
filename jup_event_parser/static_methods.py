@@ -45,6 +45,9 @@ def _get_in_and_out_transfer_instructions(inner_instructions: Sequence[InnerInst
         inner_instruction = inner_instructions[index]
         ix_type = _is_transfer_instruction(inner_instruction, swap.stack_height)
         if ix_type is not None:
+            if 'source' not in inner_instruction.parsed['info']:
+                continue
+
             source = inner_instruction.parsed['info']['source']
             destination = inner_instruction.parsed['info']['destination']
 
