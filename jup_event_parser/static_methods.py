@@ -36,6 +36,8 @@ def _get_in_and_out_transfer_instructions(inner_instructions: Sequence[InnerInst
         return None
 
     transfer_instructions = TransferInstructions()
+    transfer_instructions.in_transfers = []
+    transfer_instructions.out_transfers = []
     in_account = str(swap.in_account)
     out_account = str(swap.out_account)
 
@@ -45,11 +47,13 @@ def _get_in_and_out_transfer_instructions(inner_instructions: Sequence[InnerInst
         inner_instruction = inner_instructions[index]
         ix_type = _is_transfer_instruction(inner_instruction, swap.stack_height)
         if ix_type is not None:
-            if 'source' not in inner_instruction.parsed['info']:
-                continue
+            source = ''
+            if 'source' in inner_instruction.parsed['info']:
+                source = inner_instruction.parsed['info']['source']
 
-            source = inner_instruction.parsed['info']['source']
-            destination = inner_instruction.parsed['info']['destination']
+            destination = ''
+            if 'destination' in inner_instruction.parsed['info']:
+                destination = inner_instruction.parsed['info']['destination']
 
             if ix_type == 'transfer' or ix_type == 'transferChecked':
                 if in_account == source:

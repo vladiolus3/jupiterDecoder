@@ -6,8 +6,7 @@ def get_initial_and_final_swap_positions(route_info: RouteInfo):
         if _route_plan is None or len(_route_plan) == 0:
             return False
 
-        _index_map = [{'input_index': _route.input_index, 'output_index': _route.output_index}
-                      for _route in _route_plan]
+        _index_map = {route.input_index: route.output_index for route in route_plan}
 
         _visited = set()
         _current_index = _route_plan[0].input_index

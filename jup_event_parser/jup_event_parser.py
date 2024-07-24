@@ -57,8 +57,6 @@ class JupEventParser(Coder):
 
         swap_data = await self.parse_swap_events(account_infos_dict, swap_events)
         initial_positions, final_positions = get_initial_and_final_swap_positions(route_info)
-        if len(final_positions) == 0:
-            return
 
         in_symbol = swap_data[initial_positions[0]]['inSymbol']
         in_mint = swap_data[initial_positions[0]]['inMint']
@@ -79,7 +77,7 @@ class JupEventParser(Coder):
         out_mint = swap_data[final_positions[0]]['outMint']
 
         out_swap_data = [data for index, data in enumerate(swap_data)
-                         if index in initial_positions and data['outMint'] == out_mint]
+                         if index in final_positions and data['outMint'] == out_mint]
         out_amount = 0
         out_amount_in_decimal = Decimal(0)
         out_amount_in_usd = Decimal(0)
@@ -173,7 +171,6 @@ class JupEventParser(Coder):
                              account_infos_dict: Dict[str, AccountInfo],
                              mint: Pubkey,
                              amount: int):
-
         token = await self.tokens_jup_session.get_token_info(mint)
         token_price_in_usd = await self.price_jup_session.get_price_in_usd_by_mint(mint)
         token_decimals = account_infos_dict[str(mint)].value.data.parsed['info']['decimals'] \
