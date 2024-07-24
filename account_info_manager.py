@@ -39,8 +39,8 @@ class FeeConfigError(Exception):
 class AccountInfoManager:
     def __init__(self, endpoint: str = 'https://api.mainnet-beta.solana.com'):
         self.client = AsyncClient(endpoint)
-        self.account_info_cache_manager = self.AccountInfoCacheManager()
-        self.fee_config_cache_manager = self.FeeConfigCacheManager()
+        self.account_info_dict: Dict[PubkeyOrStr, GetAccountInfoMaybeJsonParsedResp] = {}
+        self.fee_config_dict: Dict[PubkeyOrStr, Union[FeeConfig, None]] = {}
         self.endpoint = endpoint
         self.logger = logger.get_logger(__name__, filename=f"{__name__}.log")
 
@@ -60,14 +60,14 @@ class AccountInfoManager:
             num_retries = retries
             while num_retries > 0:
                 try:
-                    if self.account_info_cache_manager.contains(account):
-                        acc_info_resp = self.account_info_cache_manager.read(account)
+                    if account in self.account_info_dict.keys():
+                        acc_info_resp = self.account_info_dict[account]
                         acc_info_resps[account] = acc_info_resp
                         break
 
                     acc_info_resp = await self.client.get_account_info_json_parsed(account)
                     if acc_info_resp.value is not None:
-                        self.account_info_cache_manager.write(account, acc_info_resp)
+                        self.account_info_dict[account] = acc_info_resp
                         acc_info_resps[account] = acc_info_resp
                         break
                 except KeyError as e:
@@ -88,47 +88,14 @@ class AccountInfoManager:
                     f"Error fetching get_account_info by account {account} from endpoint {self.endpoint}",
                     exc_info=True,
                 )
-                acc_info_resps[account] = None
+                raise SolanaTransactionFetchError(f"Error fetching get_account_info "
+                                                  f"by account {account} from endpoint {self.endpoint}")
 
         return acc_info_resps
 
-    class AccountInfoCacheManager:
-        def __init__(self):
-            self.cache_dict: Dict[PubkeyOrStr, GetAccountInfoMaybeJsonParsedResp] = {}
-
-        def write(self, key: PubkeyOrStr, value: GetAccountInfoMaybeJsonParsedResp):
-            if key in self.cache_dict:
-                raise KeyError(f"Try to write duplicate key {key} to AccountInfoCacheManager")
-            self.cache_dict[key] = value
-
-        def contains(self, key: PubkeyOrStr) -> bool:
-            return key in self.cache_dict.keys()
-
-        def read(self, key: PubkeyOrStr) -> GetAccountInfoMaybeJsonParsedResp:
-            try:
-                return self.cache_dict[key]
-            except KeyError:
-                raise KeyError(f"Record with key {key} is not found in AccountInfoCacheManager")
-
-        def delete(self, keys: Union[PubkeyOrStr, Sequence[PubkeyOrStr]]):
-            if isinstance(keys, PubkeyOrStr):
-                keys = [keys]
-
-            for key in keys:
-                try:
-                    del self.cache_dict[key]
-                except KeyError:
-                    raise KeyError(f"Record with key {key} is not found in AccountInfoCacheManager")
-
-        def clear(self):
-            self.cache_dict.clear()
-
-        def size(self) -> int:
-            return len(self.cache_dict)
-
     async def get_fee_config(self, address: PubkeyOrStr):
-        if self.fee_config_cache_manager.contains(address):
-            return self.fee_config_cache_manager.read(address)
+        if address in self.fee_config_dict.keys():
+            return self.fee_config_dict[address]
 
         if isinstance(address, str):
             address = Pubkey.from_string(address)
@@ -139,7 +106,7 @@ class AccountInfoManager:
 
             if (len(_bytes_data) <= MINT_SIZE or len(_bytes_data) <= ACCOUNT_SIZE or
                     len(_bytes_data) == MULTISIG_SIZE or _bytes_data[ACCOUNT_SIZE] != 1):
-                self.fee_config_cache_manager.write(address, None)
+                self.fee_config_dict[address] = None
                 return None
 
             _bytes_data = _bytes_data[ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE:]
@@ -159,11 +126,10 @@ class AccountInfoManager:
         try:
             account_info = await self.client.get_account_info(address)
         except Exception as e:
-            print(e)
-            pass
+            self.logger.debug(f'Error fetching get_account_info by account {address}, {e}')
 
         if account_info is None or account_info.value is None or account_info.value.owner != TOKEN_2022_PROGRAM_ID:
-            self.fee_config_cache_manager.write(address, None)
+            self.fee_config_dict[address] = None
             return None
 
         value = account_info.value
@@ -189,44 +155,10 @@ class AccountInfoManager:
 
             fee_config.older_transfer_fee = older_transfer_fee
             fee_config.newer_transfer_fee = newer_transfer_fee
-            self.fee_config_cache_manager.write(address, fee_config)
+            self.fee_config_dict[address] = fee_config
             return fee_config
 
-        self.fee_config_cache_manager.write(address, None)
+        self.fee_config_dict[address] = None
         return None
-
-    class FeeConfigCacheManager:
-        def __init__(self):
-            self.cache_dict: Dict[PubkeyOrStr, Union[FeeConfig, None]] = {}
-
-        def write(self, key: PubkeyOrStr, value: Union[FeeConfig, None]):
-            if key in self.cache_dict:
-                raise KeyError(f"Try to write duplicate key {key} to FeeConfigCacheManager")
-            self.cache_dict[key] = value
-
-        def contains(self, key: PubkeyOrStr) -> bool:
-            return key in self.cache_dict.keys()
-
-        def read(self, key: PubkeyOrStr) -> Union[FeeConfig, None]:
-            try:
-                return self.cache_dict[key]
-            except KeyError:
-                raise KeyError(f"Record with key {key} is not found in FeeConfigCacheManager")
-
-        def delete(self, keys: Union[PubkeyOrStr, Sequence[PubkeyOrStr]]):
-            if isinstance(keys, PubkeyOrStr):
-                keys = [keys]
-
-            for key in keys:
-                try:
-                    del self.cache_dict[key]
-                except KeyError:
-                    raise KeyError(f"Record with key {key} is not found in FeeConfigCacheManager")
-
-        def clear(self):
-            self.cache_dict.clear()
-
-        def size(self) -> int:
-            return len(self.cache_dict)
 
 

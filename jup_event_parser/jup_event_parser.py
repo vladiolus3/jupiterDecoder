@@ -1,7 +1,3 @@
-from account_info_manager import AccountInfoManager
-from consts import PLATFORM_FEE_ACCOUNTS_POSITION
-from data_types.parsed_fee_event import ParsedFeeEvent
-from data_types.parsed_swap_event import ParsedSwapEvent
 from .__init__ import *
 from .static_methods import _get_inner_instructions, _get_swaps, _get_in_and_out_transfer_instructions, \
     _is_fee_instruction
@@ -31,7 +27,7 @@ class JupEventParser(Coder):
     async def extract_single_route(self,
                                    transaction_with_meta: EncodedTransactionWithStatusMeta,
                                    route_info: RouteInfo):
-        account_infos_map = []
+        account_infos_dict = {}
         parsed_events = await self.get_parsed_events(transaction_with_meta, route_info)
 
         swap_events = [event for event in parsed_events if event.name == 'ParsedSwapEvent']
@@ -47,6 +43,59 @@ class JupEventParser(Coder):
 
         if len(fee_events) > 0:
             accounts_to_be_fetched.append(fee_events[0].data.account)
+
+        account_infos = await self.account_info_manager.get_account_info_json_parsed(accounts_to_be_fetched)
+        for account, account_info in account_infos:
+            account_infos_dict[account] = account_info
+
+    async def parse_swap_events(self,
+                                account_infos_dict: Dict[str, AccountInfo],
+                                swap_events: Sequence[ParsedSwapEvent]):
+        swap_data = await asyncio.gather(
+            *(self.extract_swap_data(account_infos_dict, swap_event) for swap_event in swap_events))
+        return swap_data
+
+    async def extract_swap_data(self,
+                                account_infos_dict: Dict[str, AccountInfo],
+                                swap_event: ParsedSwapEvent):
+        amm = AMM_TYPES[swap_event.amm]
+
+        in_volume = await self.extract_volume(account_infos_dict, swap_event.input_mint, swap_event.input_amount)
+        out_volume = await self.extract_volume(account_infos_dict, swap_event.output_mint, swap_event.output_amount)
+
+        return {
+            'amm': amm,
+            'inSymbol': in_volume['symbol'],
+            'inMint': in_volume['mint'],
+            'inAmount': in_volume['amount'],
+            'inAmountInDecimal': in_volume['amountInDecimal'],
+            'inAmountInUSD': in_volume['amountInUSD'],
+            'outSymbol': out_volume['symbol'],
+            'outMint': out_volume['mint'],
+            'outAmount': out_volume['amount'],
+            'outAmountInDecimal': out_volume['amountInDecimal'],
+            'outAmountInUSD': out_volume['amountInUSD'],
+        }
+
+    async def extract_volume(self,
+                             account_infos_dict: Dict[str, AccountInfo],
+                             mint: Pubkey,
+                             amount: int):
+        token = await getTokenInfo(mint)
+        tokenPriceInUSD = await getPriceInUSDByMint(mint)
+        tokenDecimals = extract_mint_decimals(account_infos_dict, mint)
+        symbol = token.symbol if token else None
+        amountInDecimal = DecimalUtil.fromBN(amount, tokenDecimals)
+        amountInUSD = amountInDecimal * tokenPriceInUSD if tokenPriceInUSD else None
+
+        return {
+            'token': token,
+            'symbol': symbol,
+            'mint': mint,
+            'amount': amount,
+            'amountInDecimal': amountInDecimal,
+            'amountInUSD': amountInUSD,
+        }
 
     async def get_parsed_events(self,
                                 transaction_with_meta: EncodedTransactionWithStatusMeta,
