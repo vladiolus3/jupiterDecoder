@@ -57,6 +57,8 @@ class JupEventParser(Coder):
 
         swap_data = await self.parse_swap_events(account_infos_dict, swap_events)
         initial_positions, final_positions = get_initial_and_final_swap_positions(route_info)
+        if len(swap_events) == 1:
+            final_positions = initial_positions
 
         in_symbol = swap_data[initial_positions[0]]['inSymbol']
         in_mint = swap_data[initial_positions[0]]['inMint']
@@ -197,6 +199,9 @@ class JupEventParser(Coder):
         swaps = _get_swaps(inner_instructions, route_info)
         for swap in swaps:
             transfer_instructions = _get_in_and_out_transfer_instructions(inner_instructions, swap)
+            if len(transfer_instructions.in_transfers) == 0 or len(transfer_instructions.out_transfers) == 0:
+                continue
+
             in_transfer_data = await self.get_transfer_data(transfer_instructions.in_transfers, 'in')
             out_transfer_data = await self.get_transfer_data(transfer_instructions.out_transfers, 'out')
             swap_event = ParsedEvent()
