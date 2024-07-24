@@ -1,3 +1,5 @@
+import json
+
 from .__init__ import *
 
 
@@ -34,4 +36,14 @@ class SwapAttributes:
     fee_mint: Optional[str] = None
     token_ledger: Optional[str] = None
     last_account: str
+
+    def to_json(self) -> str:
+        def default_converter(o):
+            if isinstance(o, Decimal):
+                return str(o)
+            if isinstance(o, datetime):
+                return o.isoformat()
+            return o.__dict__
+
+        return json.dumps(self, default=default_converter)
 

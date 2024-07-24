@@ -36,6 +36,8 @@ class JupEventParser(Coder):
                                    program_id: Pubkey):
         account_infos_dict = {}
         parsed_events = await self.get_parsed_events(transaction_with_meta, route_info)
+        if len(parsed_events) == 0:
+            return
 
         swap_events = [event.data for event in parsed_events if event.name == 'ParsedSwapEvent']
         fee_events = [event.data for event in parsed_events if event.name == 'ParsedFeeEvent']
@@ -196,6 +198,9 @@ class JupEventParser(Coder):
                                 route_info: RouteInfo):
         events = []
         inner_instructions = _get_inner_instructions(transaction_with_meta, route_info)
+        if len(inner_instructions) == 0:
+            return events
+
         swaps = _get_swaps(inner_instructions, route_info)
         for swap in swaps:
             transfer_instructions = _get_in_and_out_transfer_instructions(inner_instructions, swap)

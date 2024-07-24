@@ -6,6 +6,7 @@ def _get_inner_instructions(transaction_with_meta: EncodedTransactionWithStatusM
     for instruction in transaction_with_meta.meta.inner_instructions:
         if instruction.index == route_info.index:
             return instruction.instructions
+    return []
 
 
 def _is_swap_instruction(instruction: InnerInstruction, route_ix_stack_height: int):
