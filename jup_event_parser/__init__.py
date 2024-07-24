@@ -1,10 +1,9 @@
 from typing import Union, Sequence
+from decimal import Decimal, getcontext, ROUND_HALF_UP
 
 from solders.transaction_status import ParsedInstruction, UiPartiallyDecodedInstruction, UiCompiledInstruction
 from solders.transaction_status import EncodedTransactionWithStatusMeta
 from solders.pubkey import Pubkey
-
-import base58
 
 from anchorpy import EventCoder, InstructionCoder, Coder, NamedInstruction
 from anchorpy_core.idl import Idl
@@ -21,6 +20,7 @@ from data_types.parsed_event import ParsedEvent
 from data_types.parsed_fee_event import ParsedFeeEvent
 from data_types.parsed_swap_event import ParsedSwapEvent
 
+from session import TokensJupSession, PriceJupSession
 from account_info_manager import AccountInfoManager
 
 import asyncio
@@ -30,3 +30,7 @@ import base58
 from solders.rpc.responses import GetAccountInfoMaybeJsonParsedResp as AccountInfo
 
 InnerInstruction = Union[ParsedInstruction, UiPartiallyDecodedInstruction, UiCompiledInstruction]
+
+# round decimal values
+# getcontext().prec = 10
+# getcontext().rounding = ROUND_HALF_UP

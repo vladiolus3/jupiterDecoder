@@ -6,6 +6,8 @@ from .static_methods import _get_inner_instructions, _get_swaps, _get_in_and_out
 class JupEventParser(Coder):
     def __init__(self, idl: Idl, endpoint: str = 'https://api.mainnet-beta.solana.com'):
         self.account_info_manager = AccountInfoManager(endpoint)
+        self.tokens_jup_session = TokensJupSession()
+        self.price_jup_session = PriceJupSession()
         super().__init__(idl)
 
     def get_route_info_list(self, transaction_with_meta: EncodedTransactionWithStatusMeta):
@@ -30,23 +32,26 @@ class JupEventParser(Coder):
         account_infos_dict = {}
         parsed_events = await self.get_parsed_events(transaction_with_meta, route_info)
 
-        swap_events = [event for event in parsed_events if event.name == 'ParsedSwapEvent']
-        fee_events = [event for event in parsed_events if event.name == 'ParsedFeeEvent']
+        swap_events = [event.data for event in parsed_events if event.name == 'ParsedSwapEvent']
+        fee_events = [event.data for event in parsed_events if event.name == 'ParsedFeeEvent']
         if len(swap_events) == 0:
             # Not a swap event, for example:
             # https://solscan.io/tx/5ZSozCHmAFmANaqyjRj614zxQY8HDXKyfAs2aAVjZaadS4DbDwVq8cTbxmM5m5VzDcfhysTSqZgKGV1j2A2Hqz1V
             return
 
         accounts_to_be_fetched = []
-        [accounts_to_be_fetched.append(event.data.input_mint) for event in swap_events]
-        [accounts_to_be_fetched.append(event.data.output_mint) for event in swap_events]
+        [accounts_to_be_fetched.append(event.input_mint) for event in swap_events]
+        [accounts_to_be_fetched.append(event.output_mint) for event in swap_events]
 
         if len(fee_events) > 0:
-            accounts_to_be_fetched.append(fee_events[0].data.account)
+            accounts_to_be_fetched.append(fee_events[0].account)
 
         account_infos = await self.account_info_manager.get_account_info_json_parsed(accounts_to_be_fetched)
-        for account, account_info in account_infos:
+        for account, account_info in account_infos.items():
             account_infos_dict[account] = account_info
+
+        swap_data = await self.parse_swap_events(account_infos_dict, swap_events)
+        pass
 
     async def parse_swap_events(self,
                                 account_infos_dict: Dict[str, AccountInfo],
@@ -58,7 +63,7 @@ class JupEventParser(Coder):
     async def extract_swap_data(self,
                                 account_infos_dict: Dict[str, AccountInfo],
                                 swap_event: ParsedSwapEvent):
-        amm = AMM_TYPES[swap_event.amm]
+        amm = AMM_TYPES[str(swap_event.amm)]
 
         in_volume = await self.extract_volume(account_infos_dict, swap_event.input_mint, swap_event.input_amount)
         out_volume = await self.extract_volume(account_infos_dict, swap_event.output_mint, swap_event.output_amount)
@@ -81,20 +86,23 @@ class JupEventParser(Coder):
                              account_infos_dict: Dict[str, AccountInfo],
                              mint: Pubkey,
                              amount: int):
-        token = await getTokenInfo(mint)
-        tokenPriceInUSD = await getPriceInUSDByMint(mint)
-        tokenDecimals = extract_mint_decimals(account_infos_dict, mint)
-        symbol = token.symbol if token else None
-        amountInDecimal = DecimalUtil.fromBN(amount, tokenDecimals)
-        amountInUSD = amountInDecimal * tokenPriceInUSD if tokenPriceInUSD else None
+
+        token = await self.tokens_jup_session.get_token_info(mint)
+        token_price_in_usd = await self.price_jup_session.get_price_in_usd_by_mint(mint)
+        token_decimals = account_infos_dict[str(mint)].value.data.parsed['info']['decimals'] \
+            if str(mint) in account_infos_dict else None
+
+        symbol = token['symbol'] if token else None
+        amount_in_decimal = Decimal(amount) / (10 ** token_decimals)
+        amount_in_usd = amount_in_decimal * token_price_in_usd if token_price_in_usd else None
 
         return {
             'token': token,
             'symbol': symbol,
             'mint': mint,
             'amount': amount,
-            'amountInDecimal': amountInDecimal,
-            'amountInUSD': amountInUSD,
+            'amountInDecimal': amount_in_decimal,
+            'amountInUSD': amount_in_usd,
         }
 
     async def get_parsed_events(self,
@@ -165,6 +173,9 @@ class JupEventParser(Coder):
         return {'mint': mint, 'amount': amount}
 
     async def get_exact_out_amount_after_fee(self, info: dict, _type: str):
+        # testcase 7atgF8KQo4wJrD5ATGX7t1V2zVvykPJbFfNeVf1icFv1
+        # tx_id 3b6xEqa7cZv8Gbo1VjaKKuLbbXDD4g9x1m5yzGgRfSb2ozktqCrY9BtoqkSiBgnu1uwMsjBWcqqHTE2eQDy9DtTR
+
         # testcase 2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo
         # tx_id 2nRKszNNFYHjKevkBs9zT7gctuCS7iFVQXPfuRKX5cfCeYAQwFsZP4N6GbkXvAJSnXjMk1aNhFyYtrtDimkhJBAD
 

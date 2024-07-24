@@ -53,8 +53,8 @@ class AccountInfoManager:
         if isinstance(accounts, PubkeyOrStr):
             accounts = [accounts]
         for index, account in enumerate(accounts):
-            if isinstance(account, Pubkey):
-                accounts[index] = str(account)
+            if isinstance(account, str):
+                accounts[index] = Pubkey.from_string(account)
 
         for account in accounts:
             num_retries = retries
@@ -62,13 +62,13 @@ class AccountInfoManager:
                 try:
                     if account in self.account_info_dict.keys():
                         acc_info_resp = self.account_info_dict[account]
-                        acc_info_resps[account] = acc_info_resp
+                        acc_info_resps[str(account)] = acc_info_resp
                         break
 
                     acc_info_resp = await self.client.get_account_info_json_parsed(account)
                     if acc_info_resp.value is not None:
                         self.account_info_dict[account] = acc_info_resp
-                        acc_info_resps[account] = acc_info_resp
+                        acc_info_resps[str(account)] = acc_info_resp
                         break
                 except KeyError as e:
                     self.logger.debug(e)
