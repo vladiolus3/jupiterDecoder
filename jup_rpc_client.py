@@ -5,6 +5,7 @@ from anchorpy_core.idl import Idl
 from solana.rpc.async_api import AsyncClient
 from solders.signature import Signature
 
+from consts import JUPITER_V6_PROGRAM_ID
 from jup_event_parser.jup_event_parser import JupEventParser
 
 StrOrSignature = Union[str, Signature]
@@ -41,7 +42,15 @@ class JupRpcClient:
         route_info_list = self.jup_event_parser.get_route_info_list(tx)
         swaps = []
         for route_info in route_info_list:
-            swap = await self.jup_event_parser.extract_single_route(tx, route_info)
+            swap = await self.jup_event_parser.extract_single_route(
+                signature,
+                tx,
+                tx_resp.value.block_time,
+                route_info,
+                JUPITER_V6_PROGRAM_ID)
+            swaps.append(swap)
+
+        return swaps
 
 
 

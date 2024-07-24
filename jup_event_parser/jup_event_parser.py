@@ -1,3 +1,5 @@
+from jup_instruction_parser.static_methods import get_initial_and_final_swap_positions, \
+    get_instruction_name_and_transfer_authority_and_last_account, get_exact_out_amount, get_exact_in_amount
 from .__init__ import *
 from .static_methods import _get_inner_instructions, _get_swaps, _get_in_and_out_transfer_instructions, \
     _is_fee_instruction
@@ -27,8 +29,11 @@ class JupEventParser(Coder):
         return route_info_list
 
     async def extract_single_route(self,
+                                   signature: Signature,
                                    transaction_with_meta: EncodedTransactionWithStatusMeta,
-                                   route_info: RouteInfo):
+                                   block_time: int,
+                                   route_info: RouteInfo,
+                                   program_id: Pubkey):
         account_infos_dict = {}
         parsed_events = await self.get_parsed_events(transaction_with_meta, route_info)
 
@@ -51,7 +56,85 @@ class JupEventParser(Coder):
             account_infos_dict[account] = account_info
 
         swap_data = await self.parse_swap_events(account_infos_dict, swap_events)
-        pass
+        initial_positions, final_positions = get_initial_and_final_swap_positions(route_info)
+
+        in_symbol = swap_data[initial_positions[0]]['inSymbol']
+        in_mint = swap_data[initial_positions[0]]['inMint']
+
+        in_swap_data = [data for index, data in enumerate(swap_data)
+                        if index in initial_positions and data['inMint'] == in_mint]
+        in_amount = 0
+        in_amount_in_decimal = Decimal(0)
+        in_amount_in_usd = Decimal(0)
+
+        for data in in_swap_data:
+            in_amount += data['inAmount']
+            in_amount_in_decimal += Decimal(data['inAmountInDecimal']) if 'inAmountInDecimal' in data else Decimal(0)
+            in_amount_in_usd += Decimal(data['inAmountInUSD']) if 'inAmountInUSD' in data else Decimal(0)
+
+        out_symbol = swap_data[final_positions[0]]['outSymbol']
+        out_mint = swap_data[final_positions[0]]['outMint']
+
+        out_swap_data = [data for index, data in enumerate(swap_data)
+                         if index in initial_positions and data['outMint'] == out_mint]
+        out_amount = 0
+        out_amount_in_decimal = Decimal(0)
+        out_amount_in_usd = Decimal(0)
+
+        for data in out_swap_data:
+            out_amount += data['outAmount']
+            out_amount_in_decimal += Decimal(data['outAmountInDecimal']) if 'outAmountInDecimal' in data else Decimal(0)
+            out_amount_in_usd += Decimal(data['outAmountInUSD']) if 'outAmountInUSD' in data else Decimal(0)
+
+        volume_in_usd = min(out_amount_in_usd, out_amount_in_usd) \
+            if out_amount_in_usd and out_amount_in_usd else out_amount_in_usd or out_amount_in_usd
+
+        swap = SwapAttributes()
+        instruction_name, transfer_authority, last_account = (
+            get_instruction_name_and_transfer_authority_and_last_account(route_info))
+        swap.transfer_authority = transfer_authority
+        swap.last_account = last_account
+        swap.instruction = instruction_name
+        swap.owner = str(transaction_with_meta.transaction.message.account_keys[0].pubkey)
+        swap.program_id = str(program_id)
+        swap.signature = str(signature)
+        swap.timestamp = datetime.datetime.fromtimestamp(block_time)
+        swap.leg_count = len(swap_events)
+        swap.volume_in_usd = volume_in_usd
+
+        swap.in_symbol = in_symbol
+        swap.in_amount = in_amount
+        swap.in_amount_in_decimal = in_amount_in_decimal
+        swap.in_amount_in_usd = in_amount_in_usd
+        swap.in_mint = in_mint
+
+        swap.out_symbol = out_symbol
+        swap.out_amount = out_amount
+        swap.out_amount_in_decimal = out_amount_in_decimal
+        swap.out_amount_in_usd = out_amount_in_usd
+        swap.out_mint = out_mint
+
+        exact_out_amount = get_exact_out_amount(route_info)
+        swap.exact_out_amount = Decimal(exact_out_amount) if exact_out_amount else Decimal(0)
+        swap.exact_out_amount_in_usd = swap.exact_out_amount / out_amount * out_amount_in_usd
+
+        exact_in_amount = get_exact_in_amount(route_info)
+        swap.exact_in_amount = Decimal(exact_in_amount) if exact_in_amount else Decimal(0)
+        swap.exact_in_amount_in_usd = swap.exact_in_amount / in_amount * in_amount_in_usd
+        swap.swap_data = swap_data
+
+        if len(fee_events) > 0:
+            fee_event = fee_events[0]
+            volume = await self.extract_volume(account_infos_dict, fee_event.mint, fee_event.amount)
+            swap.fee_token_pubkey = str(fee_event.account)
+            swap.fee_owner = str(account_infos_dict[swap.fee_token_pubkey].value.data.parsed['info']['owner'])
+            swap.fee_symbol = volume['symbol']
+            swap.fee_amount = Decimal(volume['amount'])
+            swap.fee_amount_in_decimal = Decimal(volume['amountInDecimal'])
+            swap.fee_amount_in_usd = Decimal(volume['amountInUSD'])
+            swap.fee_mint = str(volume['mint'])
+
+        return swap
 
     async def parse_swap_events(self,
                                 account_infos_dict: Dict[str, AccountInfo],
@@ -193,7 +276,7 @@ class JupEventParser(Coder):
 
     async def get_swap_fee(self, route_info: RouteInfo, inner_instructions: Sequence[InnerInstruction]):
         position = PLATFORM_FEE_ACCOUNTS_POSITION[route_info.name]
-        fee_account = route_info.accounts[position]  # base58 ???
+        fee_account = route_info.accounts[position]
 
         for inner_instruction in inner_instructions:
             if not hasattr(inner_instruction, 'parsed') or inner_instruction.parsed is None:
