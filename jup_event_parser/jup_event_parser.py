@@ -293,7 +293,7 @@ class JupEventParser(Coder):
             if not hasattr(inner_instruction, 'parsed') or inner_instruction.parsed is None:
                 continue
 
-            destination = inner_instruction.parsed['info']['destination']
+            destination = inner_instruction.parsed['info'].get('destination')
             if _is_fee_instruction(inner_instruction, str(fee_account),
                                    destination, route_info.stack_height):
                 if inner_instruction.parsed['type'] == 'transfer':
