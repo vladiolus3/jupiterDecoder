@@ -133,7 +133,7 @@ def _get_swap(inner_instructions: Sequence[InnerInstruction],
     # TODO: check this
     def _get_swap_direction(_amm: str, _swap_data: any) -> bool:
         if _amm in SWAP_DIRECTION_ARGS['SIDE']:
-            return _swap_data.side.__cls__.__name__ == "Ask"
+            return _swap_data.side.__class__.__name__ == "Ask"
 
         if _amm in SWAP_DIRECTION_ARGS['A_TO_B']:
             return _swap_data.a_to_b
