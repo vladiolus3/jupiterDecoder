@@ -48,13 +48,8 @@ def _get_in_and_out_transfer_instructions(inner_instructions: Sequence[InnerInst
         inner_instruction = inner_instructions[index]
         ix_type = _is_transfer_instruction(inner_instruction, swap.stack_height)
         if ix_type is not None:
-            source = ''
-            if 'source' in inner_instruction.parsed['info']:
-                source = inner_instruction.parsed['info']['source']
-
-            destination = ''
-            if 'destination' in inner_instruction.parsed['info']:
-                destination = inner_instruction.parsed['info']['destination']
+            source = inner_instruction.parsed['info'].get('source', '')
+            destination = inner_instruction.parsed['info'].get('destination', '')
 
             if ix_type == 'transfer' or ix_type == 'transferChecked':
                 if in_account == source:
@@ -130,7 +125,6 @@ def _get_swap(inner_instructions: Sequence[InnerInstruction],
               swap_ix_index: int,
               swap_data: any,
               route_ix_stack_height: int):
-    # TODO: check this
     def _get_swap_direction(_amm: str, _swap_data: any) -> bool:
         if _amm in SWAP_DIRECTION_ARGS['SIDE']:
             return _swap_data.side.__class__.__name__ == "Ask"
