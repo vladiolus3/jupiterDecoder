@@ -141,11 +141,11 @@ SWAP_DIRECTION_ARGS = {
 
 PLATFORM_FEE_ACCOUNTS_POSITION = {
     'route': 6,
-    'routeWithTokenLedger': 6,
-    'sharedAccountsRoute': 9,
-    'sharedAccountsRouteWithTokenLedger': 9,
-    'sharedAccountsExactOutRoute': 9,
-    'exactOutRoute': 7,
+    'route_with_token_ledger': 6,
+    'shared_accounts_route': 9,
+    'shared_accounts_route_with_token_ledger': 9,
+    'shared_accounts_exact_out_route': 9,
+    'exact_out_route': 7,
 }
 
 MULTI_STEP_SWAPS = [
@@ -156,9 +156,9 @@ MULTI_STEP_SWAPS = [
 
 ROUTE_NAMES = [
     'route', 
-    'routeWithTokenLedger', 
-    'sharedAccountsRoute', 
-    'sharedAccountsRouteWithTokenLedger',
-    'sharedAccountsExactOutRoute',
-    'exactOutRoute'
+    'route_with_token_ledger',
+    'shared_accounts_route',
+    'shared_accounts_route_with_token_ledger',
+    'shared_accounts_exact_out_route',
+    'exact_out_route'
 ]

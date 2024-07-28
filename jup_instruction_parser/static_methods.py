@@ -39,10 +39,10 @@ def get_initial_and_final_swap_positions(route_info: RouteInfo):
 
 def get_instruction_name_and_transfer_authority_and_last_account(route_info: RouteInfo):
     def _get_transfer_authority_index(_instruction_name: str):
-        if _instruction_name in {"route", "exactOutRoute", "routeWithTokenLedger"}:
+        if _instruction_name in {"route", "exact_out_route", "route_with_token_ledger"}:
             return 1
-        elif _instruction_name in {"sharedAccountsRoute", "sharedAccountsRouteWithTokenLedger",
-                                   "sharedAccountsExactOutRoute"}:
+        elif _instruction_name in {"shared_accounts_route", "shared_accounts_route_with_token_ledger",
+                                   "shared_accounts_exact_out_route"}:
             return 2
         return None
 
