@@ -1,12 +1,11 @@
 import abc
+import logging
 import time
 from decimal import Decimal
 from typing import Dict, Union
 
 import aiohttp
 from solders.pubkey import Pubkey
-
-import logger
 
 
 class BaseSession(metaclass=abc.ABCMeta):
@@ -24,7 +23,6 @@ class BaseSession(metaclass=abc.ABCMeta):
             connector=connector,
             timeout=aiohttp.ClientTimeout(total=60)
         )
-        self._logger = logger.get_logger(__name__, filename=f'{__name__}.log')
 
     def __del__(self):
         self._session.connector.close()
@@ -50,7 +48,7 @@ class TokensJupSession(BaseSession):
             self._token_infos_dict[mint] = resp_json
             return resp_json
         except Exception as e:
-            self._logger.error(
+            logging.error(
                 f'Failed to fetch request from endpoint {self._base_url + url}, {e}',
                 exc_info=True,
             )
@@ -86,7 +84,7 @@ class PriceJupSession(BaseSession):
 
                 return price
         except Exception as e:
-            self._logger.error(
+            logging.error(
                 f'Failed to fetch request from endpoint {self._base_url + url}, {e}',
                 exc_info=True,
             )
