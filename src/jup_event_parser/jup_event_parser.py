@@ -1,4 +1,4 @@
-from jup_instruction_parser.static_methods import get_initial_and_final_swap_positions, \
+from src.jup_instruction_parser.static_methods import get_initial_and_final_swap_positions, \
     get_instruction_name_and_transfer_authority_and_last_account, get_exact_out_amount, get_exact_in_amount
 from .__init__ import *
 from .static_methods import _get_inner_instructions, _get_swaps, _get_in_and_out_transfer_instructions, \

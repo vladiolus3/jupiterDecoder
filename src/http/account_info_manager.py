@@ -1,4 +1,5 @@
-from typing import Union, Dict, Sequence, List
+import logging
+from typing import Union, Dict, Sequence
 import time
 
 from solana.rpc.async_api import AsyncClient
@@ -8,10 +9,10 @@ from solders.rpc.responses import GetAccountInfoMaybeJsonParsedResp
 from construct import Bytes, Int16ul, Int64ul
 from construct import Struct
 
-import logger
-from consts import TOKEN_2022_PROGRAM_ID
-from data_types.fee_config import FeeConfig, TransferFee
-from errors import SolanaTransactionFetchError
+import src.logger
+from src.consts import TOKEN_2022_PROGRAM_ID
+from src.data_types.fee_config import FeeConfig, TransferFee
+from src.errors import SolanaTransactionFetchError
 
 PubkeyOrStr = Union[Pubkey, str]
 DEFAULT_MAX_RETRIES = 5  # maximum number of times to retry get_confirmed_transaction call
@@ -42,7 +43,6 @@ class AccountInfoManager:
         self.account_info_dict: Dict[PubkeyOrStr, GetAccountInfoMaybeJsonParsedResp] = {}
         self.fee_config_dict: Dict[PubkeyOrStr, Union[FeeConfig, None]] = {}
         self.endpoint = endpoint
-        self.logger = logger.get_logger(__name__, filename=f"{__name__}.log")
 
     async def get_account_info_json_parsed(
             self,
@@ -71,20 +71,20 @@ class AccountInfoManager:
                         acc_info_resps[str(account)] = acc_info_resp
                         break
                 except KeyError as e:
-                    self.logger.debug(e)
+                    logging.debug(e)
                 except Exception as e:
-                    self.logger.error(
+                    logging.error(
                         f"Failed to receive account info response from endpoint {self.endpoint}, account {account}, {e}",
                         exc_info=True,
                     )
                 num_retries -= 1
                 time.sleep(DELAY_SECONDS)
-                self.logger.debug(
+                logging.debug(
                     f"Retrying get_account_info fetch: {account} with endpoint {self.endpoint}"
                 )
 
             if num_retries == 0:
-                self.logger.error(
+                logging.error(
                     f"Error fetching get_account_info by account {account} from endpoint {self.endpoint}",
                     exc_info=True,
                 )
@@ -126,7 +126,7 @@ class AccountInfoManager:
         try:
             account_info = await self.client.get_account_info(address)
         except Exception as e:
-            self.logger.debug(f'Error fetching get_account_info by account {address}, {e}')
+            logging.debug(f'Error fetching get_account_info by account {address}, {e}')
 
         if account_info is None or account_info.value is None or account_info.value.owner != TOKEN_2022_PROGRAM_ID:
             self.fee_config_dict[address] = None

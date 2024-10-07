@@ -2,16 +2,17 @@ import asyncio
 
 from solders.pubkey import Pubkey
 
-from jup_rpc_client import JupRpcClient
-
+from src.http.jup_rpc_client import JupRpcClient
+from src.logger import setup_logging
 
 if __name__ == '__main__':
     async def aaa():
-        client = JupRpcClient(f'https://mainnet.helius-rpc.com/?api-key=8d81201e-5fa8-409c-bbf7-0f5bf70afbb7')
+        setup_logging('debug')
+        client = JupRpcClient()
         txs = await client.client.get_signatures_for_address(
-           Pubkey.from_string('BW6RXbEyug92G3DU8uMzP1SXynCCQMBGBy2tLFp8LbzU'), limit=250)
+           Pubkey.from_string('BW6RXbEyug92G3DU8uMzP1SXynCCQMBGBy2tLFp8LbzU'), limit=100)
         tx_ids = [str(tx.signature) for tx in txs.value]
-        tx_id = '59zCwHF2DmYxi5xW1Ff4KCBZcgrdy5gRnrRRApJCSGVk53P6nfmtUXABTZGVi4Qi2JaCnNCc4qfKrN9LaPaVJLBJ'
+        tx_id = '7mnSjET1QwKEmPe2bKdvrmFsv3J7Xf3bnEqEBg91X4JPUixfy5smRy75vu5iYF5x7nneUz7Wq4d1yjCewTanMyj'
         decoded_tx = await client.decode_transaction(tx_id)
         print('json: {0}\n'.format(decoded_tx[0].to_json() if len(decoded_tx) > 0 else []))
 

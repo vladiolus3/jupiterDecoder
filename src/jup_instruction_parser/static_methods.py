@@ -66,15 +66,15 @@ def get_exact_in_amount(route_info: RouteInfo):
 def is_exact_in(name: str):
     return name in {
         "route",
-        "routeWithTokenLedger",
-        "sharedAccountsRoute",
-        "sharedAccountsRouteWithTokenLedger"
+        "route_with_token_ledger",
+        "shared_accounts_route",
+        "shared_accounts_route_with_token_ledger"
     }
 
 
 def is_exact_out(name: str):
     return name in {
-        "sharedAccountsExactOutRoute",
-        "exactOutRoute"
+        "shared_accounts_exact_out_route",
+        "exact_out_route"
     }
 

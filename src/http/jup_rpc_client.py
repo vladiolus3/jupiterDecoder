@@ -6,8 +6,8 @@ from anchorpy_core.idl import Idl
 from solana.rpc.async_api import AsyncClient
 from solders.signature import Signature
 
-from consts import JUPITER_V6_PROGRAM_ID
-from jup_event_parser.jup_event_parser import JupEventParser
+from src.consts import JUPITER_V6_PROGRAM_ID
+from src.jup_event_parser.jup_event_parser import JupEventParser
 
 StrOrSignature = Union[str, Signature]
 
