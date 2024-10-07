@@ -8,9 +8,8 @@ Made by the solution on typescript https://github.com/jup-ag/instruction-parser
 Installing
 *******
 
-```
-pip install py-jup-decoder
-```
+.. code::
+   pip install py-jup-decoder
 
 *******
 Example
