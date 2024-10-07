@@ -37,7 +37,7 @@ class SwapAttributes:
     token_ledger: Optional[str] = None
     last_account: str
 
-    def to_json(self) -> str:
+    def __repr__(self):
         def default_converter(o):
             if isinstance(o, Decimal):
                 return str(o)
@@ -45,5 +45,6 @@ class SwapAttributes:
                 return o.isoformat()
             return o.__dict__
 
-        return json.dumps(self, default=default_converter)
+        return json.dumps(self, default=default_converter, indent=2)
+
 
