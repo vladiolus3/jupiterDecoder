@@ -8,7 +8,7 @@ Made by the solution on typescript https://github.com/jup-ag/instruction-parser
 Installing
 *******
 
-.. code:: bash
+.. code:: cmd
    pip install py-jup-decoder
 
 *******
