@@ -1,4 +1,4 @@
-from .__init__ import *
+from src.contracts.route_info import RouteInfo
 
 
 def get_initial_and_final_swap_positions(route_info: RouteInfo):

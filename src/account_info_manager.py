@@ -5,9 +5,9 @@ from solana.rpc.async_api import AsyncClient
 from solders.pubkey import Pubkey
 from solders.rpc.responses import GetAccountInfoMaybeJsonParsedResp
 
-from src.consts import TOKEN_2022_PROGRAM_ID
+from src.contracts.consts import TOKEN_2022_PROGRAM_ID
 from src.contracts.fee_config import FeeConfig, TransferFee
-from src.errors import SolanaTransactionFetchError
+from src.contracts.errors import SolanaTransactionFetchError
 
 PubkeyOrStr = Union[Pubkey, str]
 

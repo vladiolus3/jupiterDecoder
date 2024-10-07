@@ -60,6 +60,9 @@ AMM_TYPES = {
     '5ocnV1qiCgaQR8Jb8xWnVbApfaygJ8tNoZfgPwsgx9kx': 'Sanctum S',
     'Gswppe6ERWKpUTXvRPfXdzHhiCyJvLadVvXGfdpBqcE1': 'GuacSwap',
     'DEXYosS6oEGvk8uCDayvwEZz4qEyDJRf9nFgYCaqPMTm': '1DEX',
+    'swapFpHZwjELNnjvThjajtiVmkz3yPQEHjLtka2fwHW': 'stabbleWeightedSwap',
+    '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P': 'Pump.Fun',
+    'obriQD1zbpyLz95G5n7nJe6a4DPjpFwa5XYPoNm113y': 'obric'
 }
 
 SWAP_IN_OUT_ACCOUNTS_POSITION = {
@@ -88,6 +91,9 @@ SWAP_IN_OUT_ACCOUNTS_POSITION = {
     'Perps': {'in': 1, 'out': 2},
     'PerpsAddLiquidity': {'in': 1, 'out': 2},
     'PerpsRemoveLiquidity': {'in': 2, 'out': 1},
+    'PerpsV2': {'in': 1, 'out': 2},
+    'PerpsV2AddLiquidity': {'in': 1, 'out': 2},
+    'PerpsV2RemoveLiquidity': {'in': 2, 'out': 1},
     'Phoenix': {'in': 4, 'out': 5},
     'Raydium': {'in': 14, 'out': 15},
     'RaydiumClmm': {'in': 3, 'out': 4},
@@ -99,9 +105,9 @@ SWAP_IN_OUT_ACCOUNTS_POSITION = {
     'SanctumS': {'in': 3, 'out': 4},
     'SanctumSAddLiquidity': {'in': 2, 'out': 3},
     'SanctumSRemoveLiquidity': {'in': 3, 'out': 2},
-    'Sencha': {'in': 3, 'out': 6},
-    'Openbook': {'in': 6, 'out': {'Ask': 6, 'Bid': 5}},
-    'Serum': {'in': 6, 'out': {'Ask': 6, 'Bid': 5}},
+    'sencha': {'in': 3, 'out': 6},
+    'Openbook': {'in': 6, 'out': {'ask': 6, 'bid': 5}},
+    'Serum': {'in': 6, 'out': {'ask': 6, 'bid': 5}},
     'StakeDexStakeWrappedSol': {'in': 1, 'out': 2},
     'StakeDexSwapViaStake': {},
     'StakeDexPrefundWithdrawStakeAndDepositStake': {'in': 1, 'out': 2},
@@ -112,6 +118,10 @@ SWAP_IN_OUT_ACCOUNTS_POSITION = {
     'Whirlpool': {'in': 3, 'out': 5},
     'WhirlpoolSwapV2': {'in': 7, 'out': 9},
     'OneIntro': {'in': 6, 'out': 7},
+    'StabbleWeightedSwap': {'in': 1, 'out': 2},
+    'PumpdotfunWrappedBuy': {'in': 5, 'out': 6},
+    'PumpdotfunWrappedSell': {'in': 5, 'out': 6},
+    'Obric': {'in': -6, 'out': -7}
 }
 
 SWAP_DIRECTION_ARGS = {
@@ -135,6 +145,9 @@ SWAP_DIRECTION_ARGS = {
         '9tKE7Mbmj4mxDjWatikzGAtkoWosiiZX9y6J4Hfm2R8H',
         'BSwp6bEBihVLdqJRKGgzjcGLHkcTuzmSo1TQkHepzH8p',
         'Gswppe6ERWKpUTXvRPfXdzHhiCyJvLadVvXGfdpBqcE1',
+    ],
+    'OBRIC_X_TO_Y': [
+        'obriQD1zbpyLz95G5n7nJe6a4DPjpFwa5XYPoNm113y'
     ],
     'QUANTITY_IS_COLLATERAL': ['C1onEW2kPetmHmwe74YC1ESx3LnFEpVau6g2pg4fHycr'],
 }
