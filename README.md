@@ -1,1 +1,0 @@
-pip install solana solders anchorpy aiohttp base58
