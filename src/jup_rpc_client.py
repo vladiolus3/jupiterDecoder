@@ -22,14 +22,14 @@ IDL = Idl.from_json(raw)
 
 class JupRpcClient:
     def __init__(self, endpoint: str = 'https://api.mainnet-beta.solana.com'):
-        self._client = AsyncClient(endpoint)
+        self.client = AsyncClient(endpoint)
         self._jup_event_parser = JupEventParser(IDL, endpoint)
 
     async def decode_transaction(self, signature: StrOrSignature):
         if isinstance(signature, str):
             signature = Signature.from_string(signature)
 
-        tx_resp = await self._client.get_transaction(
+        tx_resp = await self.client.get_transaction(
                         signature,
                         "jsonParsed",
                         max_supported_transaction_version=0,

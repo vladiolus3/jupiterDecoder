@@ -14,8 +14,4 @@ setup(
                       'base58',
                       'python-dotenv'
                       ],
-
-    classifiers=[
-        'Programming Language :: Python :: 3.12',
-    ],
 )
