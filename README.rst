@@ -9,6 +9,7 @@ Installing
 *******
 
 .. code:: sh
+
    pip install py-jup-decoder
 
 *******
