@@ -15,13 +15,13 @@ from src.consts import (JUPITER_V6_PROGRAM_ID, TOKEN_PROGRAM_ID, TOKEN_2022_PROG
                     MULTI_STEP_SWAPS, SWAP_IN_OUT_ACCOUNTS_POSITION,
                     SWAP_DIRECTION_ARGS, PLATFORM_FEE_ACCOUNTS_POSITION)
 
-from src.data_types.route_info import RouteInfo
-from src.data_types.transfer_instructions import TransferInstructions
-from src.data_types.swap import Swap
-from src.data_types.parsed_event import ParsedEvent
-from src.data_types.parsed_fee_event import ParsedFeeEvent
-from src.data_types.parsed_swap_event import ParsedSwapEvent
-from src.data_types.swap_attributes import SwapAttributes
+from src.contracts.route_info import RouteInfo
+from src.contracts.transfer_instructions import TransferInstructions
+from src.contracts.swap import Swap
+from src.contracts.parsed_event import ParsedEvent
+from src.contracts.parsed_fee_event import ParsedFeeEvent
+from src.contracts.parsed_swap_event import ParsedSwapEvent
+from src.contracts.swap_attributes import SwapAttributes
 
 from src.http.session import TokensJupSession, PriceJupSession
 from src.http.account_info_manager import AccountInfoManager

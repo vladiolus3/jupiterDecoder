@@ -1,164 +1,76 @@
 import logging
-from typing import Union, Dict, Sequence
-import time
+from typing import Union
 
 from solana.rpc.async_api import AsyncClient
 from solders.pubkey import Pubkey
 from solders.rpc.responses import GetAccountInfoMaybeJsonParsedResp
 
-from construct import Bytes, Int16ul, Int64ul
-from construct import Struct
-
-import src.logger
 from src.consts import TOKEN_2022_PROGRAM_ID
-from src.data_types.fee_config import FeeConfig, TransferFee
+from src.contracts.fee_config import FeeConfig, TransferFee
 from src.errors import SolanaTransactionFetchError
 
 PubkeyOrStr = Union[Pubkey, str]
-DEFAULT_MAX_RETRIES = 5  # maximum number of times to retry get_confirmed_transaction call
-DELAY_SECONDS = 0.2  # number of seconds to wait between calls to get_confirmed_transaction
-
-PUBLIC_KEY_LAYOUT = Bytes(32)
-TRANSFER_FEE_LAYOUT = Struct(
-    'epoch' / Int64ul,
-    'maximumFee' / Int64ul,
-    'transferFeeBasisPoints' / Int16ul
-)
-FEE_CONFIG_LAYOUT = Struct(
-    'transferFeeConfigAuthority' / PUBLIC_KEY_LAYOUT,
-    'withdrawWithheldAuthority' / PUBLIC_KEY_LAYOUT,
-    'withheldAmount' / Int64ul,
-    'olderTransferFee' / TRANSFER_FEE_LAYOUT,
-    'newerTransferFee' / TRANSFER_FEE_LAYOUT
-)
-
-
-class FeeConfigError(Exception):
-    pass
 
 
 class AccountInfoManager:
-    def __init__(self, endpoint: str = 'https://api.mainnet-beta.solana.com'):
-        self.client = AsyncClient(endpoint)
-        self.account_info_dict: Dict[PubkeyOrStr, GetAccountInfoMaybeJsonParsedResp] = {}
-        self.fee_config_dict: Dict[PubkeyOrStr, Union[FeeConfig, None]] = {}
-        self.endpoint = endpoint
+    def __init__(self, base_url: str = 'https://api.mainnet-beta.solana.com'):
+        self._client = AsyncClient(base_url)
+        self._base_url = base_url
+        self._account_info_dict: dict[Pubkey, GetAccountInfoMaybeJsonParsedResp] = {}
 
-    async def get_account_info_json_parsed(
-            self,
-            accounts: Union[Pubkey, Sequence[Pubkey]],
-            retries=DEFAULT_MAX_RETRIES
-    ):
-        acc_info_resps: Dict[str, Union[GetAccountInfoMaybeJsonParsedResp, None]] = {}
-        if isinstance(accounts, PubkeyOrStr):
-            accounts = [accounts]
-        for index, account in enumerate(accounts):
-            if isinstance(account, str):
-                accounts[index] = Pubkey.from_string(account)
+    async def get_account_info(self, account_id: PubkeyOrStr) -> GetAccountInfoMaybeJsonParsedResp:
+        if isinstance(account_id, str):
+            account_id = Pubkey.from_string(account_id)
 
-        for account in accounts:
-            num_retries = retries
-            while num_retries > 0:
-                try:
-                    if account in self.account_info_dict.keys():
-                        acc_info_resp = self.account_info_dict[account]
-                        acc_info_resps[str(account)] = acc_info_resp
-                        break
+        if account_id in self._account_info_dict:
+            return self._account_info_dict[account_id]
 
-                    acc_info_resp = await self.client.get_account_info_json_parsed(account)
-                    if acc_info_resp.value is not None:
-                        self.account_info_dict[account] = acc_info_resp
-                        acc_info_resps[str(account)] = acc_info_resp
-                        break
-                except KeyError as e:
-                    logging.debug(e)
-                except Exception as e:
-                    logging.error(
-                        f"Failed to receive account info response from endpoint {self.endpoint}, account {account}, {e}",
-                        exc_info=True,
-                    )
-                num_retries -= 1
-                time.sleep(DELAY_SECONDS)
-                logging.debug(
-                    f"Retrying get_account_info fetch: {account} with endpoint {self.endpoint}"
-                )
+        num_retries = 3
+        while num_retries > 0:
+            try:
+                account_info = await self._client.get_account_info_json_parsed(account_id)
+                logging.info('fetched payload {0}'.format(account_id))
+                self._account_info_dict[account_id] = account_info
+                return account_info
+            except Exception as e:
+                logging.warning('failed to handle request, error: {0}'.format(e), exc_info=True)
 
-            if num_retries == 0:
-                logging.error(
-                    f"Error fetching get_account_info by account {account} from endpoint {self.endpoint}",
-                    exc_info=True,
-                )
-                raise SolanaTransactionFetchError(f"Error fetching get_account_info "
-                                                  f"by account {account} from endpoint {self.endpoint}")
+            num_retries -= 1
+            logging.debug('retrying to get response from endpoint {0}'.format(self._base_url))
 
-        return acc_info_resps
+        logging.critical('failed fetching from endpoint {0}'.format(self._base_url), exc_info=True)
 
-    async def get_fee_config(self, address: PubkeyOrStr):
-        if address in self.fee_config_dict.keys():
-            return self.fee_config_dict[address]
+        raise SolanaTransactionFetchError('exception occurred while requesting from endpoint {0}'
+                                          .format(self._base_url))
 
-        if isinstance(address, str):
-            address = Pubkey.from_string(address)
+    async def get_fee_config(self, account_id: PubkeyOrStr):
+        account_info = await self.get_account_info(account_id)
 
-        def _extract_extension_data(_bytes_data: list[int]):
-            # copy from "@solana/spl-token" ts package
-            MINT_SIZE, ACCOUNT_SIZE, MULTISIG_SIZE, ACCOUNT_TYPE_SIZE = 82, 165, 355, 1
-
-            if (len(_bytes_data) <= MINT_SIZE or len(_bytes_data) <= ACCOUNT_SIZE or
-                    len(_bytes_data) == MULTISIG_SIZE or _bytes_data[ACCOUNT_SIZE] != 1):
-                self.fee_config_dict[address] = None
-                return None
-
-            _bytes_data = _bytes_data[ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE:]
-
-            index, EXTENSION, TYPE_SIZE, LENGTH_SIZE = 0, 1, 2, 2
-            while index + TYPE_SIZE + LENGTH_SIZE <= len(_bytes_data):
-                entry_type = int.from_bytes(_bytes_data[index:index + TYPE_SIZE], 'little')
-                entry_length = int.from_bytes(_bytes_data[index + TYPE_SIZE:index + TYPE_SIZE + LENGTH_SIZE], 'little')
-                type_index = index + TYPE_SIZE + LENGTH_SIZE
-                if entry_type == EXTENSION:
-                    return _bytes_data[type_index:type_index + entry_length]
-                index = type_index + entry_length
-
+        if account_info.value is None or account_info.value.owner != TOKEN_2022_PROGRAM_ID:
             return None
 
-        account_info = None
-        try:
-            account_info = await self.client.get_account_info(address)
-        except Exception as e:
-            logging.debug(f'Error fetching get_account_info by account {address}, {e}')
+        data = account_info.value.data
 
-        if account_info is None or account_info.value is None or account_info.value.owner != TOKEN_2022_PROGRAM_ID:
-            self.fee_config_dict[address] = None
-            return None
+        if data is not None:
+            extensions = data.parsed['info']['extensions']
+            for item in extensions:
+                if isinstance(item, dict) and item['extension'] == 'transferFeeConfig':
+                    state = item['state']
+                    fee_config = FeeConfig()
+                    fee_config.transfer_fee_config_authority = Pubkey.from_string(state['transferFeeConfigAuthority'])
+                    fee_config.withdraw_withheld_authority = Pubkey.from_string(state['withdrawWithheldAuthority'])
+                    fee_config.withheld_amount = state['withheldAmount']
 
-        value = account_info.value
+                    older_transfer_fee = TransferFee()
+                    older_transfer_fee.epoch = state['olderTransferFee']['epoch']
+                    older_transfer_fee.maximum_fee = state['olderTransferFee']['maximumFee']
+                    older_transfer_fee.transfer_fee_basis_points = state['olderTransferFee']['transferFeeBasisPoints']
 
-        tvl_data = _extract_extension_data(list(value.data))
+                    newer_transfer_fee = TransferFee()
+                    newer_transfer_fee.epoch = state['newerTransferFee']['epoch']
+                    newer_transfer_fee.maximum_fee = state['newerTransferFee']['maximumFee']
+                    newer_transfer_fee.transfer_fee_basis_points = state['newerTransferFee']['transferFeeBasisPoints']
 
-        if tvl_data is not None:
-            parsed_layout = FEE_CONFIG_LAYOUT.parse(bytes(tvl_data))
-            fee_config = FeeConfig()
-            fee_config.transfer_fee_config_authority = Pubkey.from_bytes(parsed_layout.transferFeeConfigAuthority)
-            fee_config.withdraw_withheld_authority = Pubkey.from_bytes(parsed_layout.withdrawWithheldAuthority)
-            fee_config.withheld_amount = parsed_layout.withheldAmount
-
-            older_transfer_fee = TransferFee()
-            older_transfer_fee.epoch = parsed_layout.olderTransferFee.epoch
-            older_transfer_fee.maximum_fee = parsed_layout.olderTransferFee.maximumFee
-            older_transfer_fee.transfer_fee_basis_points = parsed_layout.olderTransferFee.transferFeeBasisPoints
-
-            newer_transfer_fee = TransferFee()
-            newer_transfer_fee.epoch = parsed_layout.newerTransferFee.epoch
-            newer_transfer_fee.maximum_fee = parsed_layout.newerTransferFee.maximumFee
-            newer_transfer_fee.transfer_fee_basis_points = parsed_layout.newerTransferFee.transferFeeBasisPoints
-
-            fee_config.older_transfer_fee = older_transfer_fee
-            fee_config.newer_transfer_fee = newer_transfer_fee
-            self.fee_config_dict[address] = fee_config
-            return fee_config
-
-        self.fee_config_dict[address] = None
-        return None
-
-
+                    fee_config.older_transfer_fee = older_transfer_fee
+                    fee_config.newer_transfer_fee = newer_transfer_fee
+                    return fee_config

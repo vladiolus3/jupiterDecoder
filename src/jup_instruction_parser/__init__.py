@@ -1,1 +1,1 @@
-from src.data_types.route_info import RouteInfo
+from src.contracts.route_info import RouteInfo

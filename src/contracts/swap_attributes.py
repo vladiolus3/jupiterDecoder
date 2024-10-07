@@ -1,6 +1,7 @@
 import json
-
-from .__init__ import *
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional, Any
 
 
 class SwapAttributes:
@@ -26,7 +27,7 @@ class SwapAttributes:
     exact_in_amount_in_usd: Decimal
     exact_out_amount: Decimal
     exact_out_amount_in_usd: Decimal
-    swap_data: Dict[str, Any]
+    swap_data: dict[str, Any]
     fee_token_pubkey: Optional[str] = None
     fee_owner: Optional[str] = None
     fee_symbol: Optional[str] = None

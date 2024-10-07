@@ -1,3 +1,5 @@
+import asyncio
+
 from src.jup_instruction_parser.static_methods import get_initial_and_final_swap_positions, \
     get_instruction_name_and_transfer_authority_and_last_account, get_exact_out_amount, get_exact_in_amount
 from .__init__ import *
@@ -7,9 +9,9 @@ from .static_methods import _get_inner_instructions, _get_swaps, _get_in_and_out
 
 class JupEventParser(Coder):
     def __init__(self, idl: Idl, endpoint: str = 'https://api.mainnet-beta.solana.com'):
-        self.account_info_manager = AccountInfoManager(endpoint)
-        self.tokens_jup_session = TokensJupSession()
-        self.price_jup_session = PriceJupSession()
+        self._account_info_manager = AccountInfoManager(endpoint)
+        self._tokens_jup_session = TokensJupSession()
+        self._price_jup_session = PriceJupSession()
         super().__init__(idl)
 
     def get_route_info_list(self, transaction_with_meta: EncodedTransactionWithStatusMeta):
@@ -53,9 +55,8 @@ class JupEventParser(Coder):
         if len(fee_events) > 0:
             accounts_to_be_fetched.append(fee_events[0].account)
 
-        account_infos = await self.account_info_manager.get_account_info_json_parsed(accounts_to_be_fetched)
-        for account, account_info in account_infos.items():
-            account_infos_dict[account] = account_info
+        for account_id in accounts_to_be_fetched:
+            account_infos_dict[str(account_id)] = await self._account_info_manager.get_account_info(account_id)
 
         swap_data = await self.parse_swap_events(account_infos_dict, swap_events)
         initial_positions, final_positions = get_initial_and_final_swap_positions(route_info)
@@ -175,12 +176,12 @@ class JupEventParser(Coder):
                              account_infos_dict: Dict[str, AccountInfo],
                              mint: Pubkey,
                              amount: int):
-        token = await self.tokens_jup_session.get_token_info(mint)
-        token_price_in_usd = await self.price_jup_session.get_price_in_usd_by_mint(mint)
+        token = await self._tokens_jup_session.get_token_info(mint)
+        token_price_in_usd = await self._price_jup_session.get_price_in_usd_by_mint(mint)
         token_decimals = account_infos_dict[str(mint)].value.data.parsed['info']['decimals'] \
             if str(mint) in account_infos_dict else None
 
-        symbol = token['symbol'] if token else None
+        symbol = token['symbol'] if token and 'error' not in token else None
         amount_in_decimal = Decimal(amount) / (10 ** token_decimals)
         amount_in_usd = amount_in_decimal * token_price_in_usd if token_price_in_usd else None
 
@@ -209,28 +210,30 @@ class JupEventParser(Coder):
 
             in_transfer_data = await self.get_transfer_data(transfer_instructions.in_transfers, 'in')
             out_transfer_data = await self.get_transfer_data(transfer_instructions.out_transfers, 'out')
-            swap_event = ParsedEvent()
-            swap_event.name = 'ParsedSwapEvent'
-            swap_event.data = ParsedSwapEvent()
-            swap_event.data.amm = inner_instructions[swap.instruction_index].program_id
-            swap_event.data.input_mint = in_transfer_data['mint']
-            swap_event.data.input_amount = in_transfer_data['amount']
-            swap_event.data.output_mint = out_transfer_data['mint']
-            swap_event.data.output_amount = out_transfer_data['amount']
-            events.append(swap_event)
+            events.append(ParsedEvent(
+                'ParsedSwapEvent',
+                ParsedSwapEvent(
+                    amm=inner_instructions[swap.instruction_index].program_id,
+                    input_mint=in_transfer_data['mint'],
+                    input_amount=in_transfer_data['amount'],
+                    output_mint=out_transfer_data['mint'],
+                    output_amount=out_transfer_data['amount']
+                )
+            ))
 
         if route_info.data.platform_fee_bps > 0:
             swap_fee = await self.get_swap_fee(route_info, inner_instructions)
             if swap_fee is None:
                 return events
 
-            fee_event = ParsedEvent()
-            fee_event.name = 'ParsedFeeEvent'
-            fee_event.data = ParsedFeeEvent()
-            fee_event.data.account = Pubkey.from_string(swap_fee['account'])
-            fee_event.data.mint = Pubkey.from_string(swap_fee['mint'])
-            fee_event.data.amount = swap_fee['amount']
-            events.append(fee_event)
+            events.append(ParsedEvent(
+                'ParsedFeeEvent',
+                ParsedFeeEvent(
+                    account=Pubkey.from_string(swap_fee['account']),
+                    mint=Pubkey.from_string(swap_fee['mint']),
+                    amount=swap_fee['amount']
+                )
+            ))
 
         return events
 
@@ -256,11 +259,11 @@ class JupEventParser(Coder):
             else:
                 account = transfer_instruction.parsed['info']['source']
 
-            account_infos = await self.account_info_manager.get_account_info_json_parsed(account)
-            if account_infos[account] is None:
+            account_info = await self._account_info_manager.get_account_info(account)
+            if account_info is None:
                 mint = transfer_instruction.parsed['info']['mint']
             else:
-                mint = account_infos[account].value.data.parsed['info']['mint']
+                mint = account_info.value.data.parsed['info']['mint']
         else:
             mint = transfer_instruction.parsed['info']['mint']
 
@@ -274,7 +277,7 @@ class JupEventParser(Coder):
         # tx_id 2nRKszNNFYHjKevkBs9zT7gctuCS7iFVQXPfuRKX5cfCeYAQwFsZP4N6GbkXvAJSnXjMk1aNhFyYtrtDimkhJBAD
 
         if _type == 'transferChecked':
-            fee_config = await self.account_info_manager.get_fee_config(info['mint'])
+            fee_config = await self._account_info_manager.get_fee_config(info['mint'])
             if fee_config is None:
                 return int(info['tokenAmount']['amount'])
 
@@ -297,8 +300,8 @@ class JupEventParser(Coder):
             if _is_fee_instruction(inner_instruction, str(fee_account),
                                    destination, route_info.stack_height):
                 if inner_instruction.parsed['type'] == 'transfer':
-                    account_infos = await self.account_info_manager.get_account_info_json_parsed(destination)
-                    mint = account_infos[destination].value.data.parsed['info']['mint']
+                    account_info = await self._account_info_manager.get_account_info(destination)
+                    mint = account_info.value.data.parsed['info']['mint']
                 else:
                     mint = inner_instruction.parsed['info']['mint']
 

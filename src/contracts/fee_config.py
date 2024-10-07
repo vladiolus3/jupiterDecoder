@@ -1,4 +1,4 @@
-from .__init__ import *
+from solders.pubkey import Pubkey
 
 
 class TransferFee:
