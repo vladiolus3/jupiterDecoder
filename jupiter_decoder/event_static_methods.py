@@ -3,13 +3,13 @@ from typing import Sequence, Union
 from solders.transaction_status import EncodedTransactionWithStatusMeta, ParsedInstruction, \
     UiPartiallyDecodedInstruction, UiCompiledInstruction
 
-from src.contracts.consts import (TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID,
-                                  TRANSFER_INSTRUCTION_TYPES, AMM_TYPES,
-                                  MULTI_STEP_SWAPS, SWAP_IN_OUT_ACCOUNTS_POSITION,
-                                  SWAP_DIRECTION_ARGS)
-from src.contracts.route_info import RouteInfo
-from src.contracts.swap import Swap
-from src.contracts.transfer_instructions import TransferInstructions
+from jupiter_decoder.contracts.consts import (TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID,
+                                              TRANSFER_INSTRUCTION_TYPES, AMM_TYPES,
+                                              MULTI_STEP_SWAPS, SWAP_IN_OUT_ACCOUNTS_POSITION,
+                                              SWAP_DIRECTION_ARGS)
+from jupiter_decoder.contracts.route_info import RouteInfo
+from jupiter_decoder.contracts.swap import Swap
+from jupiter_decoder.contracts.transfer_instructions import TransferInstructions
 
 InnerInstruction = Union[ParsedInstruction, UiPartiallyDecodedInstruction, UiCompiledInstruction]
 

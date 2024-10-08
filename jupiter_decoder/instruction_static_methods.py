@@ -1,4 +1,4 @@
-from src.contracts.route_info import RouteInfo
+from jupiter_decoder.contracts.route_info import RouteInfo
 
 
 def get_initial_and_final_swap_positions(route_info: RouteInfo):

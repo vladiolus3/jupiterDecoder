@@ -1,7 +1,7 @@
 from typing import Union
 
-from src.contracts.parsed_fee_event import ParsedFeeEvent
-from src.contracts.parsed_swap_event import ParsedSwapEvent
+from jupiter_decoder.contracts.parsed_fee_event import ParsedFeeEvent
+from jupiter_decoder.contracts.parsed_swap_event import ParsedSwapEvent
 
 
 class ParsedEvent:

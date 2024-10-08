@@ -1,23 +1,16 @@
-from pathlib import Path
+import json
 from typing import Union
 
 from anchorpy_core.idl import Idl
 from solana.rpc.async_api import AsyncClient
 from solders.signature import Signature
 
-from src.contracts.consts import JUPITER_V6_PROGRAM_ID
-from src.jup_event_parser import JupEventParser
+from jupiter_decoder.contracts.consts import JUPITER_V6_PROGRAM_ID
+from jupiter_decoder.contracts.idl_json import IDL_JSON
+from jupiter_decoder.jup_event_parser import JupEventParser
 
 StrOrSignature = Union[str, Signature]
-
-JUPITER_IDL_FILENAME = 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4.json'
-
-if not (Path.cwd() / JUPITER_IDL_FILENAME).exists():
-    raise FileNotFoundError(JUPITER_IDL_FILENAME)
-
-file = open(JUPITER_IDL_FILENAME, 'r')
-raw = file.read()
-IDL = Idl.from_json(raw)
+IDL = Idl.from_json(json.dumps(IDL_JSON))
 
 
 class JupRpcClient:
