@@ -37,5 +37,5 @@ Example
 Resources
 *********
 
-* PyPI page: http://pypi.python.org/pypi/django-downloadview
+* PyPI page: http://https://pypi.org/project/py-jup-decoder
 * Original project: https://github.com/jup-ag/instruction-parser
